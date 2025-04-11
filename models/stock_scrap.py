@@ -18,7 +18,7 @@ class StockScrap(models.Model):
             total_qty += lot.product_qty
         self.scrap_qty = total_qty
 
-    def _prepare_move_values(self, lot): 
+    def _prepare_move_values(self, lot=None): 
         self.ensure_one()
         values = {
             'name': self.name,
