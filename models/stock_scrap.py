@@ -18,7 +18,7 @@ class StockScrap(models.Model):
 
     def _prepare_move_values(self, lot):
         self.ensure_one()
-        lot = self.env.context.get('lot') or None
+        lot = self.env.context.get('lot_id') or None
 
         values = {
             'name': self.name,
