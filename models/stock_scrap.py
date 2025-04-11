@@ -16,7 +16,7 @@ class StockScrap(models.Model):
         total_qty = sum(lot.product_qty for lot in self.lot_ids)
         self.scrap_qty = total_qty
 
-    def _prepare_move_values(self):
+    def _prepare_move_values(self, lot):
         self.ensure_one()
         lot = self.env.context.get('lot') or None
 
@@ -54,7 +54,7 @@ class StockScrap(models.Model):
             moves = []
             for lot in scrap.lot_ids:
                 move = self.env['stock.move'].create(
-                    scrap.with_context(lot=lot)._prepare_move_values()
+                    scrap._prepare_move_values(lot)
                 )
                 moves.append(move)
             for move in moves:
