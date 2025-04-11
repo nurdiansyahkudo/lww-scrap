@@ -13,13 +13,13 @@ class StockScrap(models.Model):
 
     @api.onchange('lot_ids')
     def _onchange_lot_ids(self):
-        total_qty = 0
-        for lot in self.lot_ids:
-            total_qty += lot.product_qty
+        total_qty = sum(lot.product_qty for lot in self.lot_ids)
         self.scrap_qty = total_qty
 
-    def _prepare_move_values(self, lot=None): 
+    def _prepare_move_values(self):
         self.ensure_one()
+        lot = self.env.context.get('lot') or None
+
         values = {
             'name': self.name,
             'origin': self.origin or self.picking_id.name or self.name,
@@ -27,7 +27,7 @@ class StockScrap(models.Model):
             'product_id': self.product_id.id,
             'product_uom': self.product_uom_id.id,
             'state': 'draft',
-            'product_uom_qty': self.scrap_qty, 
+            'product_uom_qty': self.scrap_qty,
             'location_id': self.location_id.id,
             'scrapped': True,
             'scrap_id': self.id,
@@ -35,25 +35,27 @@ class StockScrap(models.Model):
             'move_line_ids': [(0, 0, {
                 'product_id': self.product_id.id,
                 'product_uom_id': self.product_uom_id.id,
-                'quantity': lot.product_qty if lot else self.scrap_qty, 
+                'quantity': lot.product_qty if lot else self.scrap_qty,
                 'location_id': self.location_id.id,
                 'location_dest_id': self.scrap_location_id.id,
                 'package_id': self.package_id.id,
                 'owner_id': self.owner_id.id,
-                'lot_id': lot.id if lot else self.lot_id.id, 
+                'lot_id': lot.id if lot else self.lot_id.id,
             })],
             'picked': True,
             'picking_id': self.picking_id.id
         }
         return values
-    
+
     def do_scrap(self):
         self._check_company()
         for scrap in self:
             scrap.name = self.env['ir.sequence'].next_by_code('stock.scrap') or _('New')
             moves = []
             for lot in scrap.lot_ids:
-                move = self.env['stock.move'].create(scrap._prepare_move_values(lot))
+                move = self.env['stock.move'].create(
+                    scrap.with_context(lot=lot)._prepare_move_values()
+                )
                 moves.append(move)
             for move in moves:
                 move.with_context(is_scrap=True)._action_done()
@@ -75,13 +77,13 @@ class StockScrap(models.Model):
             owner_id=self.owner_id.id,
             strict=True,
         ).product_id.qty_available for lot in self.lot_ids)
+
         scrap_qty = self.product_uom_id._compute_quantity(self.scrap_qty, self.product_id.uom_id)
         return float_compare(available_qty, scrap_qty, precision_digits=precision) >= 0
 
     def action_validate(self):
         self.ensure_one()
-        if float_is_zero(self.scrap_qty,
-                         precision_rounding=self.product_uom_id.rounding):
+        if float_is_zero(self.scrap_qty, precision_rounding=self.product_uom_id.rounding):
             raise UserError(_('You can only enter positive quantities.'))
         if self.check_available_qty():
             return self.do_scrap()
