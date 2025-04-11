@@ -18,21 +18,16 @@ class StockScrap(models.Model):
             total_qty += lot.product_qty
         self.scrap_qty = total_qty
 
-    def _prepare_move_values(self):
-        # default Odoo: fallback 1 lot
-        return self.prepare_move_values_for_lot(self.lot_id)
-
-    def prepare_move_values_for_lot(self, lot):
+    def _prepare_move_values(self, lot): 
         self.ensure_one()
-        qty = lot.product_qty if lot else self.scrap_qty
-        return {
+        values = {
             'name': self.name,
             'origin': self.origin or self.picking_id.name or self.name,
             'company_id': self.company_id.id,
             'product_id': self.product_id.id,
             'product_uom': self.product_uom_id.id,
             'state': 'draft',
-            'product_uom_qty': qty,
+            'product_uom_qty': self.scrap_qty, 
             'location_id': self.location_id.id,
             'scrapped': True,
             'scrap_id': self.id,
@@ -40,16 +35,17 @@ class StockScrap(models.Model):
             'move_line_ids': [(0, 0, {
                 'product_id': self.product_id.id,
                 'product_uom_id': self.product_uom_id.id,
-                'quantity': qty,
+                'quantity': lot.product_qty if lot else self.scrap_qty, 
                 'location_id': self.location_id.id,
                 'location_dest_id': self.scrap_location_id.id,
                 'package_id': self.package_id.id,
                 'owner_id': self.owner_id.id,
-                'lot_id': lot.id if lot else self.lot_id.id,
+                'lot_id': lot.id if lot else self.lot_id.id, 
             })],
             'picked': True,
-            'picking_id': self.picking_id.id,
+            'picking_id': self.picking_id.id
         }
+        return values
     
     def do_scrap(self):
         self._check_company()
