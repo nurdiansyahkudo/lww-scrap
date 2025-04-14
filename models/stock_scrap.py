@@ -11,10 +11,15 @@ class StockScrap(models.Model):
         check_company=True
     )
 
-    @api.onchange('lot_ids')
-    def _onchange_lot_ids(self):
-        total_qty = sum(lot.product_qty for lot in self.lot_ids)
-        self.scrap_qty = total_qty
+    @api.depends('lot_ids', 'move_ids', 'move_ids.move_line_ids.quantity', 'product_id')
+    def _compute_scrap_qty(self):
+        for scrap in self:
+            if scrap.lot_ids:
+                scrap.scrap_qty = sum(lot.product_qty for lot in scrap.lot_ids)
+            elif scrap.move_ids:
+                scrap.scrap_qty = scrap.move_ids[0].quantity
+            else:
+                scrap.scrap_qty = 1.0
 
     def _prepare_move_values(self):
         self.ensure_one()
