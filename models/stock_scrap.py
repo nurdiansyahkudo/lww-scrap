@@ -16,7 +16,7 @@ class StockScrap(models.Model):
         total_qty = sum(lot.product_qty for lot in self.lot_ids)
         self.scrap_qty = total_qty
 
-    def _prepare_move_values(self, lot):
+    def _prepare_move_values(self):
         self.ensure_one()
 
         values = {
@@ -39,7 +39,7 @@ class StockScrap(models.Model):
                 'location_dest_id': self.scrap_location_id.id,
                 'package_id': self.package_id.id,
                 'owner_id': self.owner_id.id,
-                'lot_id': lot.id if lot else self.lot_id.id,
+                'lot_id': self.lot_ids[0].id if self.lot_ids else False,
             })],
             'picked': True,
             'picking_id': self.picking_id.id
@@ -53,7 +53,7 @@ class StockScrap(models.Model):
             moves = []
             for lot in scrap.lot_ids:
                 move = self.env['stock.move'].create(
-                    scrap._prepare_move_values(lot)
+                    scrap._prepare_move_values()
                 )
                 moves.append(move)
             for move in moves:
