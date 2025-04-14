@@ -11,12 +11,36 @@ class StockScrap(models.Model):
         check_company=True
     )
 
+    # @api.onchange('lot_ids')
+    # def _onchange_lot_ids_set_scrap_qty(self):
+    #     if self.lot_ids:
+    #         self.scrap_qty = sum(lot.product_qty for lot in self.lot_ids)
+    #     else:
+    #         self.scrap_qty = 1.0
+
+    def _sync_scrap_qty(self):
+        for scrap in self:
+            if scrap.lot_ids:
+                scrap.scrap_qty = sum(lot.product_qty for lot in scrap.lot_ids)
+            else:
+                scrap.scrap_qty = 1.0
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        records = super().create(vals_list)
+        records._sync_scrap_qty()
+        return records
+
+    def write(self, vals):
+        res = super().write(vals)
+        if 'lot_ids' in vals:
+            self._sync_scrap_qty()
+        return res
+
     @api.onchange('lot_ids')
     def _onchange_lot_ids_set_scrap_qty(self):
-        if self.lot_ids:
-            self.scrap_qty = sum(lot.product_qty for lot in self.lot_ids)
-        else:
-            self.scrap_qty = 1.0
+        self._sync_scrap_qty()
+
 
     def _prepare_move_values(self):
         self.ensure_one()
