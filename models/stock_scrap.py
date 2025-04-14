@@ -11,15 +11,12 @@ class StockScrap(models.Model):
         check_company=True
     )
 
-    @api.depends('lot_ids', 'move_ids', 'move_ids.move_line_ids.quantity', 'product_id')
-    def _compute_scrap_qty(self):
-        for scrap in self:
-            if scrap.lot_ids:
-                scrap.scrap_qty = sum(lot.product_qty for lot in scrap.lot_ids)
-            elif scrap.move_ids and scrap.move_ids[0].move_line_ids:
-                scrap.scrap_qty = scrap.move_ids[0].move_line_ids[0].quantity
-            else:
-                scrap.scrap_qty = 1.0
+    @api.onchange('lot_ids')
+    def _onchange_lot_ids_set_scrap_qty(self):
+        if self.lot_ids:
+            self.scrap_qty = sum(lot.product_qty for lot in self.lot_ids)
+        else:
+            self.scrap_qty = 1.0
 
     def _prepare_move_values(self):
         self.ensure_one()
@@ -91,8 +88,7 @@ class StockScrap(models.Model):
                 moves.append(move)
             for move in moves:
                 move.with_context(is_scrap=True)._action_done()
-            scrap.write({'state': 'done'})
-            scrap.date_done = fields.Datetime.now()
+            scrap.write({'state': 'done', 'date_done': fields.Datetime.now()})
             if scrap.should_replenish:
                 scrap.do_replenish()
         return True
@@ -100,7 +96,6 @@ class StockScrap(models.Model):
     def check_available_qty(self):
         if not self._should_check_available_qty():
             return True
-
         precision = self.env['decimal.precision'].precision_get('Product Unit of Measure')
         available_qty = sum(
             self.with_context(
@@ -119,10 +114,8 @@ class StockScrap(models.Model):
         self.ensure_one()
         if float_is_zero(self.scrap_qty, precision_rounding=self.product_uom_id.rounding):
             raise UserError(_('You can only enter positive quantities.'))
-
         if self.check_available_qty():
             return self.do_scrap()
-
         ctx = dict(self.env.context)
         ctx.update({
             'default_product_id': self.product_id.id,
