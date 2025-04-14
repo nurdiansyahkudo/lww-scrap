@@ -34,7 +34,7 @@ class StockScrap(models.Model):
             'move_line_ids': [(0, 0, {
                 'product_id': self.product_id.id,
                 'product_uom_id': self.product_uom_id.id,
-                'quantity': lot.product_qty if lot else self.scrap_qty,
+                'quantity': self.product_qty if self else self.scrap_qty,
                 'location_id': self.location_id.id,
                 'location_dest_id': self.scrap_location_id.id,
                 'package_id': self.package_id.id,
