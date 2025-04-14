@@ -11,12 +11,13 @@ class StockScrap(models.Model):
         check_company=True
     )
 
-    # @api.onchange('lot_ids')
-    # def _onchange_lot_ids_set_scrap_qty(self):
-    #     if self.lot_ids:
-    #         self.scrap_qty = sum(lot.product_qty for lot in self.lot_ids)
-    #     else:
-    #         self.scrap_qty = 1.0
+    def _compute_scrap_qty_from_lots(self):
+        for scrap in self:
+            if scrap.lot_ids:
+                total_qty = sum(lot.product_qty for lot in scrap.lot_ids)
+                scrap.write({'scrap_qty': total_qty})
+            else:
+                scrap.write({'scrap_qty': 1.0})
 
     def _sync_scrap_qty(self):
         for scrap in self:
@@ -102,9 +103,10 @@ class StockScrap(models.Model):
         self._check_company()
         for scrap in self:
             # Force sync scrap_qty sebelum proses scrap
-            if scrap.lot_ids:
-                calculated_qty = sum(lot.product_qty for lot in scrap.lot_ids)
-                scrap.write({'scrap_qty': calculated_qty})
+            # if scrap.lot_ids:
+            #     calculated_qty = sum(lot.product_qty for lot in scrap.lot_ids)
+            #     scrap.write({'scrap_qty': calculated_qty})
+            scrap._compute_scrap_qty_from_lots()
 
             scrap.name = self.env['ir.sequence'].next_by_code('stock.scrap') or _('New')
             moves = []
@@ -143,8 +145,9 @@ class StockScrap(models.Model):
         self.ensure_one()
 
         # Sync ulang scrap_qty supaya sesuai lot_ids sebelum validasi
-        if self.lot_ids:
-            self.scrap_qty = sum(lot.product_qty for lot in self.lot_ids)
+        # if self.lot_ids:
+        #     self.scrap_qty = sum(lot.product_qty for lot in self.lot_ids)
+        self._compute_scrap_qty_from_lots()
 
         if float_is_zero(self.scrap_qty, precision_rounding=self.product_uom_id.rounding):
             raise UserError(_('You can only enter positive quantities.'))
