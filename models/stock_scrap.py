@@ -37,8 +37,9 @@ class StockScrap(models.Model):
     @api.onchange('lot_ids')
     def _onchange_lot_ids_set_scrap_qty(self):
         """Perbarui scrap_qty saat lot_ids berubah."""
-        if self.lot_ids:
-            self.scrap_qty = sum(lot.product_qty for lot in self.lot_ids)
+        self._sync_scrap_qty()
+        # if self.lot_ids:
+        #     self.scrap_qty = sum(lot.product_qty for lot in self.lot_ids)
 
     def action_validate(self):
         """Validasi sebelum melakukan proses scrap."""
