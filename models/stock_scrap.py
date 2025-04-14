@@ -22,7 +22,7 @@ class StockScrap(models.Model):
         for scrap in self:
             if scrap.lot_ids:
                 scrap.scrap_qty = sum(lot.product_qty for lot in scrap.lot_ids)
-            else:
+            elif not scrap.scrap_qyt:
                 scrap.scrap_qty = 1.0
 
     @api.model_create_multi
@@ -39,7 +39,9 @@ class StockScrap(models.Model):
 
     @api.onchange('lot_ids')
     def _onchange_lot_ids_set_scrap_qty(self):
-        self._sync_scrap_qty()
+        # self._sync_scrap_qty()
+        if self.lot_ids:
+            self.scrap_qty = sum(lot.product_qty for lot in self.lot_ids)
 
 
     def _prepare_move_values(self):
