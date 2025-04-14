@@ -101,7 +101,7 @@ class StockScrap(models.Model):
     def do_scrap(self):
         self._check_company()
         for scrap in self:
-            # Hitung ulang scrap_qty kalau lot_ids terisi
+            # Force sync scrap_qty sebelum proses scrap
             if scrap.lot_ids:
                 calculated_qty = sum(lot.product_qty for lot in scrap.lot_ids)
                 scrap.write({'scrap_qty': calculated_qty})
