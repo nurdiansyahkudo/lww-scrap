@@ -11,26 +11,12 @@ class StockScrap(models.Model):
         check_company=True
     )
 
-    def _get_total_lot_quantity(self):
-        """Hitung total kuantitas berdasarkan lot_ids."""
-        total_qty = 0.0
-        for lot in self.lot_ids:
-            # Cari stock.quant untuk lot tertentu di lokasi tertentu
-            quant = self.env['stock.quant'].search([
-                ('lot_id', '=', lot.id),
-                ('location_id', '=', self.location_id.id),
-                ('quantity', '>', 0)
-            ], limit=1)
-            if quant:
-                total_qty += quant.quantity
-        return total_qty
-
     def _sync_scrap_qty(self):
         """Sinkronisasi scrap_qty berdasarkan lot_ids."""
         for scrap in self:
             if scrap.lot_ids:
-                # Gunakan metode baru untuk menghitung total kuantitas
-                scrap.scrap_qty = scrap._get_total_lot_quantity()
+                calculated_qty = sum(lot.product_qty for lot in scrap.lot_ids)
+                scrap.scrap_qty = calculated_qty
             elif not scrap.scrap_qty:
                 scrap.scrap_qty = 1.0  # Default jika tidak ada lot
 
@@ -52,7 +38,7 @@ class StockScrap(models.Model):
     def _onchange_lot_ids_set_scrap_qty(self):
         """Perbarui scrap_qty saat lot_ids berubah."""
         if self.lot_ids:
-            self.scrap_qty = self._get_total_lot_quantity()
+            self.scrap_qty = sum(lot.product_qty for lot in self.lot_ids)
 
     def action_validate(self):
         """Validasi sebelum melakukan proses scrap."""
@@ -60,7 +46,7 @@ class StockScrap(models.Model):
 
         # Sinkronisasi ulang scrap_qty sebelum validasi
         if self.lot_ids:
-            self.scrap_qty = self._get_total_lot_quantity()
+            self.scrap_qty = sum(lot.product_qty for lot in self.lot_ids)
 
         # Pastikan nilai scrap_qty positif
         if float_is_zero(self.scrap_qty, precision_rounding=self.product_uom_id.rounding):
@@ -95,7 +81,7 @@ class StockScrap(models.Model):
         for scrap in self:
             # Sinkronisasi ulang scrap_qty sebelum melakukan proses scrap
             if scrap.lot_ids:
-                calculated_qty = scrap._get_total_lot_quantity()
+                calculated_qty = sum(lot.product_qty for lot in scrap.lot_ids)
                 scrap.write({'scrap_qty': calculated_qty})
 
             # Buat gerakan stok untuk setiap lot atau produk secara keseluruhan
