@@ -141,10 +141,17 @@ class StockScrap(models.Model):
 
     def action_validate(self):
         self.ensure_one()
+
+        # Sync ulang scrap_qty supaya sesuai lot_ids sebelum validasi
+        if self.lot_ids:
+            self.scrap_qty = sum(lot.product_qty for lot in self.lot_ids)
+
         if float_is_zero(self.scrap_qty, precision_rounding=self.product_uom_id.rounding):
             raise UserError(_('You can only enter positive quantities.'))
+
         if self.check_available_qty():
             return self.do_scrap()
+
         ctx = dict(self.env.context)
         ctx.update({
             'default_product_id': self.product_id.id,
