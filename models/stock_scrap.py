@@ -77,6 +77,10 @@ class StockScrap(models.Model):
     def do_scrap(self):
         self._check_company()
         for scrap in self:
+            # Sync ulang scrap_qty jika lot dipilih
+            if scrap.lot_ids:
+                scrap.scrap_qty = sum(lot.product_qty for lot in scrap.lot_ids)
+
             scrap.name = self.env['ir.sequence'].next_by_code('stock.scrap') or _('New')
             moves = []
             if scrap.lot_ids:
@@ -112,17 +116,10 @@ class StockScrap(models.Model):
 
     def action_validate(self):
         self.ensure_one()
-
-        # force sync scrap_qty dengan lot_ids sebelum validasi
-        if self.lot_ids:
-            self.scrap_qty = sum(lot.product_qty for lot in self.lot_ids)
-
         if float_is_zero(self.scrap_qty, precision_rounding=self.product_uom_id.rounding):
             raise UserError(_('You can only enter positive quantities.'))
-
         if self.check_available_qty():
             return self.do_scrap()
-
         ctx = dict(self.env.context)
         ctx.update({
             'default_product_id': self.product_id.id,
