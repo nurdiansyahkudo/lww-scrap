@@ -16,8 +16,8 @@ class StockScrap(models.Model):
         for scrap in self:
             if scrap.lot_ids:
                 scrap.scrap_qty = sum(lot.product_qty for lot in scrap.lot_ids)
-            elif scrap.move_ids:
-                scrap.scrap_qty = scrap.move_ids[0].quantity
+            elif scrap.move_ids and scrap.move_ids[0].move_line_ids:
+                scrap.scrap_qty = scrap.move_ids[0].move_line_ids[0].quantity
             else:
                 scrap.scrap_qty = 1.0
 
