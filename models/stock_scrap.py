@@ -79,24 +79,27 @@ class StockScrap(models.Model):
         for scrap in self:
             scrap.name = self.env['ir.sequence'].next_by_code('stock.scrap') or _('New')
             moves = []
+            total_qty = 0.0
+
             if scrap.lot_ids:
                 for lot in scrap.lot_ids:
                     move = self.env['stock.move'].create(scrap._prepare_move_values_per_lot(lot))
                     moves.append(move)
-                total_qty = sum(lot.product_qty for lot in scrap.lot_ids)
+                    total_qty += lot.product_qty
             else:
                 move = self.env['stock.move'].create(scrap._prepare_move_values())
                 moves.append(move)
-                total_qty = scrap.scrap_qty  # default
+                total_qty = scrap.scrap_qty
 
-            for move in moves:
-                move.with_context(is_scrap=True)._action_done()
-
+            # update correct scrap_qty after creating moves
             scrap.write({
                 'scrap_qty': total_qty,
                 'state': 'done',
                 'date_done': fields.Datetime.now()
             })
+
+            for move in moves:
+                move.with_context(is_scrap=True)._action_done()
 
             if scrap.should_replenish:
                 scrap.do_replenish()
