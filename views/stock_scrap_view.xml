@@ -15,6 +15,18 @@
                        domain="[('product_id', '=', product_id), ('product_qty', '>', 0)]"
                 />
             </xpath>
+
+            <xpath expr="//label[@for='scrap_qty']" position="replace">
+                <label for="scrap_qty" invisible="state == 'draft'"/>
+            </xpath>
+
+            <xpath expr="//div/field[@name='scrap_qty']" position="replace">
+                <field name="scrap_qty" invisible="state == 'draft'" readonly="state == 'done' or tracking == 'serial'"/>
+            </xpath>
+
+            <xpath expr="//group/field[@name='lot_ids']" position="before">
+                <field name="lot_scrap_qty" invisible="state == 'done'" readonly="state == 'done' or tracking == 'serial'"/>
+            </xpath>
         </field>
     </record>
 </odoo>

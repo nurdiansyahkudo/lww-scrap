@@ -5,7 +5,7 @@ from odoo.tools import float_compare, float_is_zero
 class StockScrap(models.Model):
     _inherit = 'stock.scrap'
 
-    # Tambah field many2many untuk pilih banyak lot sekaligus
+    # Field many2many untuk pilih banyak lot sekaligus
     lot_ids = fields.Many2many(
         'stock.lot', string='Lots/Serials',
         domain="[('product_id', '=', product_id), ('product_qty', '>', 0)]",
@@ -13,13 +13,23 @@ class StockScrap(models.Model):
         help="Select lots/serial numbers to scrap at once"
     )
 
+    lot_scrap_qty = fields.Float(
+        string='Quantity',
+        compute='_compute_lot_scrap_qty',
+        store=True,
+        readonly=True
+    )
+
+    @api.depends('lot_ids')
+    def _compute_lot_scrap_qty(self):
+        for scrap in self:
+            scrap.lot_scrap_qty = sum(lot.product_qty for lot in scrap.lot_ids)
+
     @api.onchange('lot_ids')
     def _onchange_lot_ids_update_scrap_qty(self):
         if self.lot_ids:
             # Total qty dari semua lot yang dipilih
             self.scrap_qty = sum(lot.product_qty for lot in self.lot_ids)
-        else:
-            self.scrap_qty = 1.0
 
     def _prepare_move_values_per_lot(self, lot):
         self.ensure_one()
